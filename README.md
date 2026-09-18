@@ -46,6 +46,19 @@ persisted yet.** The single `persist()` function in
 needs replacing to send replies to a database, an email provider or a
 spreadsheet.
 
+## The venue map
+
+An OpenStreetMap embed — no API key, no billing, no third-party analytics. It is
+a locator, not a tool: the frame is inert (`pointer-events: none`) so it cannot
+swallow a phone's scroll, and the whole panel is a link that opens Google Maps
+directions in a new tab. The frame is scaled up slightly to crop out the
+embed's own zoom buttons and footer bar, which would be dead controls on an
+inert map; the required attribution therefore sits in the visible caption
+underneath.
+
+The coordinates and bounding box are in
+[`src/components/Venue.tsx`](src/components/Venue.tsx).
+
 ## Motion and accessibility
 
 Every animation is written in the `--dur-*` / `--ease-*` tokens, so the

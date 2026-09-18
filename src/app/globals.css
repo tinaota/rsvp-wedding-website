@@ -89,6 +89,25 @@
   }
 }
 
+/* Venue map. The OSM tiles are warmed slightly so the map sits inside the
+   palette instead of shouting over it — gently, so street names stay legible,
+   and not at all for anyone who has asked for more contrast. */
+.venue-map iframe {
+  filter: sepia(0.22) saturate(0.82) contrast(0.96) brightness(1.02);
+}
+@media (prefers-contrast: more) {
+  .venue-map iframe {
+    filter: none;
+  }
+}
+
+.venue-map-link:hover span,
+.venue-map-link:focus-visible span {
+  background-color: var(--color-burgundy);
+  border-color: var(--color-burgundy);
+  color: var(--color-burgundy-ink);
+}
+
 /* The mobile menu trigger. Its own class rather than a utility, because the
    button needs inline layout styles that would otherwise outrank `lg:hidden`. */
 .menu-toggle {
