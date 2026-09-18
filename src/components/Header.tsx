@@ -10,10 +10,15 @@ export default function Header() {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  const closeMenu = useCallback(() => {
+  /**
+   * `restoreFocus` is for dismissal — Escape, the close button, the breakpoint.
+   * Following a link is not a dismissal: pulling focus back to the hamburger
+   * would both lose the reader's place and fight the jump to the section.
+   */
+  const closeMenu = useCallback((restoreFocus = true) => {
     setMenuOpen(false);
     document.body.style.overflow = "";
-    triggerRef.current?.focus();
+    if (restoreFocus) triggerRef.current?.focus();
   }, []);
 
   const openMenu = useCallback(() => {
@@ -109,7 +114,6 @@ export default function Header() {
           position: "sticky",
           top: 0,
           zIndex: 50,
-          height: menuOpen ? "auto" : undefined,
           backgroundColor: scrolled
             ? "rgba(250, 247, 242, 0.94)"
             : "var(--color-card)",
@@ -171,7 +175,7 @@ export default function Header() {
             // .menu-toggle carries the display rules: an inline `display` here
             // would beat lg:hidden and leave the hamburger on desktop.
             className="menu-toggle btn-press"
-            onClick={menuOpen ? closeMenu : openMenu}
+            onClick={menuOpen ? () => closeMenu() : openMenu}
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
             aria-controls="site-menu"
@@ -226,85 +230,87 @@ export default function Header() {
             />
           </button>
         </div>
+      </header>
 
-        {menuOpen && (
-          <div
-            id="site-menu"
-            ref={panelRef}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Site navigation"
-            className="lg:hidden"
-            style={{
-              position: "fixed",
-              inset: "64px 0 0 0",
-              backgroundColor: "var(--color-card)",
-              borderTop: "1px solid var(--color-border-hairline)",
-              zIndex: 49,
-              padding: "clamp(24px, 6vw, 40px)",
-              overflowY: "auto",
-            }}
-          >
-            <nav aria-label="Mobile site navigation">
-              <ul
-                style={{
-                  listStyle: "none",
-                  margin: 0,
-                  padding: 0,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 2,
-                }}
-              >
-                {NAV_SECTIONS.map(({ label, id }) => (
-                  <li key={id}>
-                    <a
-                      href={`#${id}`}
-                      onClick={closeMenu}
-                      aria-current={
-                        activeSection === id ? "location" : undefined
-                      }
-                      style={{
-                        display: "block",
-                        padding: "16px 0",
-                        borderBottom: "1px solid var(--color-border-hairline)",
-                        fontSize: "var(--text-h3)",
-                        fontFamily: "var(--font-display)",
-                        color:
-                          activeSection === id
-                            ? "var(--color-burgundy)"
-                            : "var(--color-ink)",
-                        textDecoration: "none",
-                        fontWeight: activeSection === id ? 600 : 400,
-                      }}
-                    >
-                      {label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-
-            <button
-              type="button"
-              onClick={closeMenu}
+      {/* Deliberately a sibling of <header>, not a child: the header takes a
+          backdrop-filter once scrolled, which would make it the containing
+          block for this fixed panel and collapse it to the header’s own
+          height. */}
+      {menuOpen && (
+        <div
+          id="site-menu"
+          ref={panelRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Site navigation"
+          className="lg:hidden"
+          style={{
+            position: "fixed",
+            inset: "64px 0 0 0",
+            backgroundColor: "var(--color-card)",
+            borderTop: "1px solid var(--color-border-hairline)",
+            zIndex: 49,
+            padding: "clamp(24px, 6vw, 40px)",
+            overflowY: "auto",
+          }}
+        >
+          <nav aria-label="Mobile site navigation">
+            <ul
               style={{
-                marginTop: 32,
-                minHeight: 44,
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                fontSize: "var(--text-small)",
-                color: "var(--color-ink-muted)",
+                listStyle: "none",
+                margin: 0,
                 padding: 0,
-                fontFamily: "var(--font-body)",
+                display: "flex",
+                flexDirection: "column",
+                gap: 2,
               }}
             >
-              Close menu
-            </button>
-          </div>
-        )}
-      </header>
+              {NAV_SECTIONS.map(({ label, id }) => (
+                <li key={id}>
+                  <a
+                    href={`#${id}`}
+                    onClick={() => closeMenu(false)}
+                    aria-current={activeSection === id ? "location" : undefined}
+                    style={{
+                      display: "block",
+                      padding: "16px 0",
+                      borderBottom: "1px solid var(--color-border-hairline)",
+                      fontSize: "var(--text-h3)",
+                      fontFamily: "var(--font-display)",
+                      color:
+                        activeSection === id
+                          ? "var(--color-burgundy)"
+                          : "var(--color-ink)",
+                      textDecoration: "none",
+                      fontWeight: activeSection === id ? 600 : 400,
+                    }}
+                  >
+                    {label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          <button
+            type="button"
+            onClick={() => closeMenu()}
+            style={{
+              marginTop: 32,
+              minHeight: 44,
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              fontSize: "var(--text-small)",
+              color: "var(--color-ink-muted)",
+              padding: 0,
+              fontFamily: "var(--font-body)",
+            }}
+          >
+            Close menu
+          </button>
+        </div>
+      )}
     </>
   );
 }
