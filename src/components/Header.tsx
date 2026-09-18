@@ -189,7 +189,9 @@ export default function Header() {
           <button
             ref={triggerRef}
             type="button"
-            className="lg:hidden btn-press"
+            // .menu-toggle carries the display rules: an inline `display` here
+            // would beat lg:hidden and leave the hamburger on desktop.
+            className="menu-toggle btn-press"
             onClick={menuOpen ? closeMenu : openMenu}
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
@@ -200,7 +202,6 @@ export default function Header() {
               cursor: "pointer",
               width: 48,
               height: 48,
-              display: "flex",
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",

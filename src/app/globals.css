@@ -89,6 +89,17 @@
   }
 }
 
+/* The mobile menu trigger. Its own class rather than a utility, because the
+   button needs inline layout styles that would otherwise outrank `lg:hidden`. */
+.menu-toggle {
+  display: flex;
+}
+@media (min-width: 1024px) {
+  .menu-toggle {
+    display: none;
+  }
+}
+
 /* Hero. One photo serves both layouts: a 4:3 banner stacked above the copy on
    small screens, the left half of a split screen from lg up. */
 .hero-layout {
