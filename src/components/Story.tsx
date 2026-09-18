@@ -119,7 +119,7 @@ export default function Story() {
                 maxWidth: "66ch",
               }}
             >
-              Fifteen years of covenant, community, and grace. Two lives
+              Fifteen years of marriage, community, and grace. Two lives
               intertwined not by chance but by calling — built on scripture,
               strengthened by service, and grounded in a love that has grown
               through every season. Tonight, before those who matter most, they
