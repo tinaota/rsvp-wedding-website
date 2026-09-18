@@ -48,16 +48,21 @@ spreadsheet.
 
 ## The venue map
 
-An OpenStreetMap embed — no API key, no billing, no third-party analytics. It is
-a locator, not a tool: the frame is inert (`pointer-events: none`) so it cannot
-swallow a phone's scroll, and the whole panel is a link that opens Google Maps
-directions in a new tab. The frame is scaled up slightly to crop out the
-embed's own zoom buttons and footer bar, which would be dead controls on an
-inert map; the required attribution therefore sits in the visible caption
-underneath.
+A mosaic of plain tile images rather than an embedded map widget. The map is
+only ever a locator, so there is nothing to pan or zoom — and drawing it
+ourselves means no third-party chrome, no map library, nothing to swallow a
+phone's scroll, and a marker in the site's own palette. The whole panel is a
+link that opens Google Maps directions in a new tab.
 
-The coordinates and bounding box are in
-[`src/components/Venue.tsx`](src/components/Venue.tsx).
+Tiles come from Esri's Light Gray Canvas: keyless, and near-monochrome, so the
+warm tint in `globals.css` reads as a toned map rather than a filtered one.
+(CARTO's Positron was the first choice and looks the same, but it now stamps
+"API KEY REQUIRED" across unauthenticated tiles.) A light warm tint ties the
+grey into the cream; it is dropped under `prefers-contrast: more`.
+
+Coordinates, zoom and the tile grid are all in
+[`src/components/Venue.tsx`](src/components/Venue.tsx) — change `ZOOM` or
+`TILE_RADIUS` and the mosaic re-centres itself on the venue automatically.
 
 ## Motion and accessibility
 

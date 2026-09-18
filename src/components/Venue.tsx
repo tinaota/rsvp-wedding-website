@@ -5,25 +5,94 @@ import { useEffect, useRef } from "react";
 const DIRECTIONS_URL =
   "https://www.google.com/maps/dir/?api=1&destination=The+Langham+Melbourne,+1+Southgate+Ave,+Southbank+VIC+3006";
 
-/** The Langham Melbourne, 1 Southgate Ave — from OpenStreetMap. */
+/** The Langham Melbourne, 1 Southgate Ave — geocoded from OpenStreetMap. */
 const VENUE = { lat: -37.8205784, lon: 144.9657396 };
 
-/** A block or so either side of the hotel: enough to place it against the Yarra. */
-const BBOX = [
-  VENUE.lon - 0.006,
-  VENUE.lat - 0.003,
-  VENUE.lon + 0.006,
-  VENUE.lat + 0.003,
-].join(",");
+/* The map is a mosaic of plain tile images rather than an embedded map widget.
+   It is only ever a locator, so there is nothing to pan or zoom — and drawing
+   it ourselves means no third-party chrome to crop, no script to load, no
+   scroll to swallow on a phone, and a marker in our own palette.
 
-const MAP_EMBED_URL =
-  `https://www.openstreetmap.org/export/embed.html?bbox=${BBOX}` +
-  `&layer=mapnik&marker=${VENUE.lat},${VENUE.lon}`;
+   Tiles are Esri's Light Gray Canvas: keyless (CARTO now stamps "API KEY
+   REQUIRED" over unauthenticated tiles) and quiet enough to sit under the
+   invitation rather than shout over it. Labels ship as a separate transparent
+   layer, so the two mosaics are stacked. */
+const ESRI = "https://services.arcgisonline.com/ArcGIS/rest/services/Canvas";
+const ZOOM = 15;
+const TILE_PX = 256;
+/** Tiles either side of the centre one, so a 3x3 grid. */
+const TILE_RADIUS = 1;
+
+/** Web Mercator: fractional tile coordinates for a lat/lon at a given zoom. */
+function tileCoords(lat: number, lon: number, zoom: number) {
+  const n = 2 ** zoom;
+  const rad = (lat * Math.PI) / 180;
+  return {
+    x: ((lon + 180) / 360) * n,
+    y: ((1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2) * n,
+  };
+}
+
+const CENTRE = tileCoords(VENUE.lat, VENUE.lon, ZOOM);
+const FIRST_TILE_X = Math.floor(CENTRE.x) - TILE_RADIUS;
+const FIRST_TILE_Y = Math.floor(CENTRE.y) - TILE_RADIUS;
+const GRID_SPAN = TILE_RADIUS * 2 + 1;
+const MOSAIC_PX = GRID_SPAN * TILE_PX;
+
+/** Where the venue falls inside the mosaic, so it can be pinned to the centre. */
+const VENUE_OFFSET = {
+  x: (CENTRE.x - FIRST_TILE_X) * TILE_PX,
+  y: (CENTRE.y - FIRST_TILE_Y) * TILE_PX,
+};
+
+const TILES = Array.from({ length: GRID_SPAN * GRID_SPAN }, (_, i) => ({
+  x: FIRST_TILE_X + (i % GRID_SPAN),
+  y: FIRST_TILE_Y + Math.floor(i / GRID_SPAN),
+}));
+
+/** Esri orders its path {z}/{y}/{x}, not {z}/{x}/{y}. */
+const tileUrl = (layer: string, x: number, y: number) =>
+  `${ESRI}/${layer}/MapServer/tile/${ZOOM}/${y}/${x}`;
+
+/** One full-bleed mosaic, positioned so the venue lands at the frame's centre. */
+function TileLayer({ layer }: { layer: string }) {
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        position: "absolute",
+        width: MOSAIC_PX,
+        height: MOSAIC_PX,
+        left: `calc(50% - ${VENUE_OFFSET.x}px)`,
+        top: `calc(50% - ${VENUE_OFFSET.y}px)`,
+        display: "grid",
+        gridTemplateColumns: `repeat(${GRID_SPAN}, ${TILE_PX}px)`,
+        gridAutoRows: `${TILE_PX}px`,
+      }}
+    >
+      {TILES.map((tile) => (
+        // Plain <img>: tiles are already exactly the right size and come from a
+        // CDN, so routing them through next/image would only add a proxy hop.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          key={`${tile.x}-${tile.y}`}
+          src={tileUrl(layer, tile.x, tile.y)}
+          alt=""
+          width={TILE_PX}
+          height={TILE_PX}
+          loading="lazy"
+          decoding="async"
+          draggable={false}
+          style={{ display: "block", width: TILE_PX, height: TILE_PX }}
+        />
+      ))}
+    </div>
+  );
+}
 
 /**
- * A locator map, not a tool. The frame is inert — panning it would trap the
- * page scroll on a phone — so the whole thing is a link that hands the guest
- * over to Google Maps, where they can actually get directions.
+ * A locator map: it shows where the venue is, then hands the guest to Google
+ * Maps for the directions they actually want.
  */
 function VenueMap() {
   return (
@@ -34,34 +103,37 @@ function VenueMap() {
           position: "relative",
           aspectRatio: "4/3",
           overflow: "hidden",
-          // OSM's land tone is within a hair of our background, so any sliver
-          // the scaled frame leaves at an edge simply disappears.
-          backgroundColor: "var(--color-background)",
+          backgroundColor: "var(--color-card)",
           border: "1px solid var(--color-border-hairline)",
         }}
       >
-        <iframe
-          src={MAP_EMBED_URL}
-          loading="lazy"
-          referrerPolicy="no-referrer-when-downgrade"
+        <TileLayer layer="World_Light_Gray_Base" />
+        <TileLayer layer="World_Light_Gray_Reference" />
+
+        {/* The marker sits at the container's centre, which is where the
+            mosaic has been positioned to put the venue. */}
+        <svg
           aria-hidden="true"
-          tabIndex={-1}
-          // The embed draws its own zoom buttons and a "report a problem" bar,
-          // which would be dead controls on an inert frame. Scaling the frame
-          // up pushes them outside the crop — and unlike sizing the frame
-          // larger, it never makes the embed re-lay-out, so nothing can end up
-          // half-drawn. Attribution moves to the caption below.
+          width="34"
+          height="34"
+          viewBox="0 0 34 34"
+          fill="none"
           style={{
             position: "absolute",
-            inset: 0,
-            width: "100%",
-            height: "100%",
-            border: 0,
-            transform: "scale(1.34)",
-            transformOrigin: "center",
-            pointerEvents: "none",
+            left: "50%",
+            top: "50%",
+            // The pin points at its tip, so anchor the tip, not the centre.
+            transform: "translate(-50%, -100%)",
           }}
-        />
+        >
+          <path
+            d="M17 3.5c-4.7 0-8.5 3.8-8.5 8.5 0 6.2 8.5 15 8.5 15s8.5-8.8 8.5-15c0-4.7-3.8-8.5-8.5-8.5z"
+            fill="var(--color-burgundy)"
+            stroke="var(--color-card)"
+            strokeWidth="1.5"
+          />
+          <circle cx="17" cy="12" r="3.2" fill="var(--color-gold-leaf)" />
+        </svg>
 
         <a
           href={DIRECTIONS_URL}
@@ -97,26 +169,6 @@ function VenueMap() {
                 "background-color var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard)",
             }}
           >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 20 20"
-              fill="none"
-              aria-hidden="true"
-            >
-              <circle
-                cx="10"
-                cy="8"
-                r="3"
-                stroke="currentColor"
-                strokeWidth="1.5"
-              />
-              <path
-                d="M10 2.5C10 2.5 4.5 7 4.5 11.5C4.5 15 7 17.5 10 17.5C13 17.5 15.5 15 15.5 11.5C15.5 7 10 2.5 10 2.5Z"
-                stroke="currentColor"
-                strokeWidth="1.5"
-              />
-            </svg>
             Open in Google Maps
             <span className="sr-only">(opens in a new tab)</span>
           </span>
@@ -139,7 +191,7 @@ function VenueMap() {
         >
           OpenStreetMap
         </a>{" "}
-        contributors
+        contributors, tiles © Esri
       </figcaption>
     </figure>
   );

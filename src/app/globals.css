@@ -89,23 +89,23 @@
   }
 }
 
-/* Venue map. The OSM tiles are warmed slightly so the map sits inside the
-   palette instead of shouting over it — gently, so street names stay legible,
-   and not at all for anyone who has asked for more contrast. */
-.venue-map iframe {
-  filter: sepia(0.22) saturate(0.82) contrast(0.96) brightness(1.02);
-}
-@media (prefers-contrast: more) {
-  .venue-map iframe {
-    filter: none;
-  }
-}
-
 .venue-map-link:hover span,
 .venue-map-link:focus-visible span {
   background-color: var(--color-burgundy);
   border-color: var(--color-burgundy);
   color: var(--color-burgundy-ink);
+}
+
+/* Venue map. Esri's Light Gray Canvas is near-monochrome, so a warm tint reads
+   as a toned map rather than a filtered one, and ties the grey into the cream.
+   Left alone for anyone who has asked for more contrast. */
+.venue-map img {
+  filter: sepia(0.34) saturate(0.68) brightness(1.03);
+}
+@media (prefers-contrast: more) {
+  .venue-map img {
+    filter: none;
+  }
 }
 
 /* The mobile menu trigger. Its own class rather than a utility, because the
