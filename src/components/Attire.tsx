@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 
 const SWATCHES = [
   { name: "Formal Black", hex: "#1a1a1a" },
-  { name: "Deep Burgundy", hex: "#5c2d1e" },
+  { name: "Deep Burgundy", hex: "#5A0F24" },
   { name: "Midnight Navy", hex: "#1b2a4a" },
   { name: "Chocolate Brown", hex: "#4a2c17" },
   { name: "Warm Ivory", hex: "#f5f0e0" },
