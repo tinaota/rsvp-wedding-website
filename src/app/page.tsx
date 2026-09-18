@@ -4,6 +4,7 @@ import Story from "@/components/Story";
 import Schedule from "@/components/Schedule";
 import Venue from "@/components/Venue";
 import Attire from "@/components/Attire";
+import Registry from "@/components/Registry";
 import Footer from "@/components/Footer";
 import StickyRsvpBar from "@/components/StickyRsvpBar";
 import SectionRail from "@/components/SectionRail";
@@ -22,6 +23,7 @@ export default function Home() {
         <Schedule />
         <Venue />
         <Attire />
+        <Registry />
         <RsvpFlow />
       </main>
       <Footer />

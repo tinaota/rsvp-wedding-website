@@ -12,6 +12,7 @@ export const SECTIONS = [
   { id: "schedule", label: "The Evening" },
   { id: "venue", label: "Venue" },
   { id: "attire", label: "Attire" },
+  { id: "registry", label: "Registry" },
   { id: "rsvp", label: "RSVP" },
 ] as const;
 

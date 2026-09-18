@@ -106,32 +106,6 @@ export default function Attire() {
             </li>
           ))}
         </ul>
-
-        <div
-          className="p-5 border-l-4 inline-block"
-          style={{
-            borderColor: "var(--color-gold-leaf)",
-            backgroundColor: "var(--color-background)",
-          }}
-        >
-          <p
-            className="uppercase tracking-widest mb-1"
-            style={{
-              fontSize: "var(--text-eyebrow)",
-              color: "var(--color-gold-ink)",
-              letterSpacing: "0.14em",
-            }}
-          >
-            Lady of Honour
-          </p>
-          <p
-            style={{ fontSize: "var(--text-small)", color: "var(--color-ink)" }}
-          >
-            The Lady of Honour will be dressed in{" "}
-            <strong>Champagne Gold</strong>. Guests are welcome to incorporate
-            gold accents.
-          </p>
-        </div>
       </div>
     </section>
   );
