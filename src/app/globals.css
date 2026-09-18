@@ -1,26 +1,402 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Design tokens — ported verbatim from the Figma Make prototype's @theme block.
+   Anything that is not a token belongs in the layers below, not here. */
+@theme {
+  --color-background: #f5f0e8;
+  --color-card: #faf7f2;
+  --color-ink: #1a1208;
+  --color-ink-muted: #6b5c45;
+  --color-burgundy: #5c2d1e;
+  --color-burgundy-hover: #4a2418;
+  --color-burgundy-ink: #faf7f2;
+  --color-gold-ink: #856224;
+  --color-gold-leaf: #b8924a;
+  --color-border-strong: #8f8168;
+  --color-border-hairline: #c8bda8;
+  --color-success: #2f5d3a;
+  --color-error: #8c2318;
+  --color-focus: #5c2d1e;
+
+  --font-display: var(--font-playfair), Georgia, serif;
+  --font-body: var(--font-lora), Georgia, serif;
+  --font-script: var(--font-great-vibes), cursive;
+
+  --text-monogram: clamp(2.5rem, 6vw, 4rem);
+  --text-display: clamp(2rem, 5.2vw, 3.75rem);
+  --text-h1: clamp(1.75rem, 3.4vw, 2.5rem);
+  --text-h2: clamp(1.375rem, 2.4vw, 1.875rem);
+  --text-h3: clamp(1.125rem, 1.6vw, 1.375rem);
+  --text-body: clamp(1rem, 1.05vw, 1.0625rem);
+  --text-small: 0.9375rem;
+  --text-eyebrow: 0.8125rem;
+
+  --dur-instant: 0.1s;
+  --dur-fast: 0.16s;
+  --dur-base: 0.24s;
+  --dur-slow: 0.42s;
+  --dur-entrance: 0.7s;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized: cubic-bezier(0.3, 0, 0, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --travel-sm: 8px;
+  --travel-md: 16px;
+  --space-1: 4px;
+  --space-4: 16px;
+  --space-32: 128px;
+  --radius-full: 999px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  body {
+    background-color: var(--color-background);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    font-size: var(--text-body);
+    line-height: 1.65;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 3px;
+    border-radius: inherit;
+  }
+
+  /* Burgundy surfaces invert the focus ring so it stays visible. */
+  .on-burgundy :focus-visible {
+    outline-color: var(--color-background);
+  }
+
+  section[id] {
+    scroll-margin-top: 96px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: none;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border-hairline);
+    border-radius: 3px;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Hero. One photo serves both layouts: a 4:3 banner stacked above the copy on
+   small screens, the left half of a split screen from lg up. */
+.hero-layout {
+  display: block;
+}
+.hero-photo {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+  background-color: var(--color-ink);
+}
+@media (min-width: 1024px) {
+  .hero-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: calc(100vh - 64px);
+  }
+  .hero-photo {
+    aspect-ratio: auto;
+    height: 100%;
+  }
+}
+
+/* Motion. Every animation is expressed in --dur-* / --ease-* tokens so the
+   reduced-motion block at the end can neutralise the lot in one place. */
+
+.section-reveal {
+  opacity: 0;
+  transform: translateY(var(--travel-md));
+  transition:
+    opacity var(--dur-slow) var(--ease-standard),
+    transform var(--dur-slow) var(--ease-standard);
+}
+.section-reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+.section-reveal-delay {
+  transition-delay: 0.12s;
+}
+
+.timeline-item {
+  opacity: 0;
+  transform: translateY(var(--travel-md));
+  transition:
+    opacity var(--dur-base) var(--ease-standard),
+    transform var(--dur-base) var(--ease-standard);
+}
+.timeline-item.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+@keyframes hero-rise {
+  from {
+    opacity: 0;
+    transform: translateY(var(--travel-md));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+[data-hero-item] {
+  opacity: 0;
+}
+.hero-entered [data-hero-item] {
+  animation: hero-rise var(--dur-entrance) var(--ease-emphasized) forwards;
+}
+.hero-entered [data-hero-item="0"] {
+  animation-delay: 0s;
+}
+.hero-entered [data-hero-item="1"] {
+  animation-delay: 90ms;
+}
+.hero-entered [data-hero-item="2"] {
+  animation-delay: 0.18s;
+}
+.hero-entered [data-hero-item="3"] {
+  animation-delay: 0.27s;
+}
+.hero-entered [data-hero-item="4"] {
+  animation-delay: 0.36s;
+}
+
+[data-hero-word] {
+  opacity: 0;
+  display: inline-block;
+}
+.hero-entered [data-hero-word="0"] {
+  animation: hero-rise var(--dur-entrance) var(--ease-emphasized) 90ms forwards;
+}
+.hero-entered [data-hero-word="1"] {
+  animation: hero-rise var(--dur-entrance) var(--ease-emphasized) 0.21s forwards;
+}
+
+@keyframes scroll-cue-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(6px);
+  }
+}
+.scroll-cue {
+  animation: scroll-cue-bob 2s ease-in-out infinite;
+}
+
+@keyframes numeral-up {
+  from {
+    opacity: 0;
+    transform: translateY(var(--travel-sm));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes numeral-down {
+  from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--travel-sm)));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.numeral-up {
+  animation: numeral-up var(--dur-fast) var(--ease-spring) both;
+}
+.numeral-down {
+  animation: numeral-down var(--dur-fast) var(--ease-spring) both;
+}
+
+/* RSVP step changes ride the View Transition API where the browser has it. */
+::view-transition-old(rsvp-step) {
+  animation: step-out var(--dur-base) var(--ease-exit) both;
+}
+::view-transition-new(rsvp-step) {
+  animation: step-in var(--dur-base) var(--ease-standard) both;
+}
+@keyframes step-out {
+  to {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+}
+@keyframes step-in {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+}
+
+@keyframes draw-seal {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.seal-draw {
+  animation: draw-seal 0.6s var(--ease-standard) 0.1s forwards;
+}
+
+.sticky-bar-enter {
+  animation: bar-slide-up var(--dur-base) var(--ease-standard) forwards;
+}
+.sticky-bar-exit {
+  animation: bar-slide-down var(--dur-base) var(--ease-exit) forwards;
+}
+@keyframes bar-slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes bar-slide-down {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+.disclosure-enter {
+  animation: disclosure-open var(--dur-base) var(--ease-standard) forwards;
+  overflow: hidden;
+}
+.disclosure-exit {
+  animation: disclosure-close var(--dur-fast) var(--ease-exit) forwards;
+  overflow: hidden;
+}
+@keyframes disclosure-open {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 1200px;
+  }
+}
+@keyframes disclosure-close {
+  from {
+    opacity: 1;
+    max-height: 1200px;
+  }
+  to {
+    opacity: 0;
+    max-height: 0;
+  }
+}
+
+/* Scroll-driven timeline rule, where supported. */
+@supports (animation-timeline: view()) {
+  .timeline-rule {
+    transform-origin: top;
+    animation: draw-rule linear both;
+    animation-timeline: view();
+    animation-range: entry cover 60%;
+  }
+  @keyframes draw-rule {
+    from {
+      transform: scaleY(0);
+    }
+    to {
+      transform: scaleY(1);
+    }
+  }
+}
+
+.btn-press:active {
+  transition: transform var(--dur-instant) linear;
+  transform: scale(0.985);
+}
+
+.nav-link {
+  position: relative;
+  text-decoration: none;
+}
+.nav-link::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background: var(--color-gold-leaf);
+  transform: scaleX(0);
+  transform-origin: 0;
+  transition: transform var(--dur-fast) var(--ease-standard);
+}
+.nav-link:hover::after,
+.nav-link[aria-current="location"]::after {
+  transform: scaleX(1);
+}
+.nav-link:hover,
+.nav-link[aria-current="location"] {
+  color: var(--color-burgundy);
+  transition: color var(--dur-fast) var(--ease-standard);
+}
+
+.swatch-grid {
+  grid-template-columns: repeat(2, 1fr);
+}
+@media (min-width: 768px) {
+  .swatch-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+@media (min-width: 1024px) {
+  .swatch-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
+  .reduced-crossfade {
+    transition-duration: var(--dur-fast) !important;
+    transition-property: opacity !important;
+  }
+
+  .section-reveal,
+  [data-hero-item],
+  [data-hero-word],
+  .timeline-item {
+    opacity: 1 !important;
+    animation: none !important;
+    transform: none !important;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
