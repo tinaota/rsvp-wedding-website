@@ -6,6 +6,7 @@ import Venue from "@/components/Venue";
 import Attire from "@/components/Attire";
 import Footer from "@/components/Footer";
 import StickyRsvpBar from "@/components/StickyRsvpBar";
+import SectionRail from "@/components/SectionRail";
 import RsvpFlow from "@/components/rsvp/RsvpFlow";
 
 export default function Home() {
@@ -24,6 +25,7 @@ export default function Home() {
         <RsvpFlow />
       </main>
       <Footer />
+      <SectionRail />
       <StickyRsvpBar />
     </>
   );

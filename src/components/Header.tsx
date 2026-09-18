@@ -1,19 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-
-const NAV_LINKS = [
-  { label: "Our Story", href: "#story" },
-  { label: "The Evening", href: "#schedule" },
-  { label: "Venue", href: "#venue" },
-  { label: "Attire", href: "#attire" },
-  { label: "RSVP", href: "#rsvp" },
-] as const;
+import { NAV_SECTIONS, useActiveSection } from "./sections";
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [activeSection, setActiveSection] = useState("");
+  const activeSection = useActiveSection();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -45,20 +38,6 @@ export default function Header() {
     mq.addEventListener("change", onBreakpoint);
     return () => mq.removeEventListener("change", onBreakpoint);
   }, [closeMenu]);
-
-  useEffect(() => {
-    const sections = NAV_LINKS.map(({ href }) => document.querySelector(href));
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) setActiveSection("#" + entry.target.id);
-        });
-      },
-      { rootMargin: "-80px 0px -60% 0px", threshold: 0 },
-    );
-    sections.forEach((el) => el && observer.observe(el));
-    return () => observer.disconnect();
-  }, []);
 
   const trapFocus = useCallback(
     (e: KeyboardEvent) => {
@@ -164,17 +143,17 @@ export default function Header() {
             aria-label="Site navigation"
             className="hidden lg:flex items-center gap-8"
           >
-            {NAV_LINKS.map(({ label, href }) => (
+            {NAV_SECTIONS.map(({ label, id }) => (
               <a
-                key={href}
-                href={href}
+                key={id}
+                href={`#${id}`}
                 className="nav-link uppercase"
-                aria-current={activeSection === href ? "location" : undefined}
+                aria-current={activeSection === id ? "location" : undefined}
                 style={{
                   fontSize: "var(--text-eyebrow)",
                   letterSpacing: "0.14em",
                   color:
-                    activeSection === href
+                    activeSection === id
                       ? "var(--color-burgundy)"
                       : "var(--color-ink-muted)",
                   fontFamily: "var(--font-body)",
@@ -277,13 +256,13 @@ export default function Header() {
                   gap: 2,
                 }}
               >
-                {NAV_LINKS.map(({ label, href }) => (
-                  <li key={href}>
+                {NAV_SECTIONS.map(({ label, id }) => (
+                  <li key={id}>
                     <a
-                      href={href}
+                      href={`#${id}`}
                       onClick={closeMenu}
                       aria-current={
-                        activeSection === href ? "location" : undefined
+                        activeSection === id ? "location" : undefined
                       }
                       style={{
                         display: "block",
@@ -292,11 +271,11 @@ export default function Header() {
                         fontSize: "var(--text-h3)",
                         fontFamily: "var(--font-display)",
                         color:
-                          activeSection === href
+                          activeSection === id
                             ? "var(--color-burgundy)"
                             : "var(--color-ink)",
                         textDecoration: "none",
-                        fontWeight: activeSection === href ? 600 : 400,
+                        fontWeight: activeSection === id ? 600 : 400,
                       }}
                     >
                       {label}

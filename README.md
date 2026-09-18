@@ -64,6 +64,19 @@ Coordinates, zoom and the tile grid are all in
 [`src/components/Venue.tsx`](src/components/Venue.tsx) — change `ZOOM` or
 `TILE_RADIUS` and the mosaic re-centres itself on the venue automatically.
 
+## Navigation
+
+Three things read from one list, [`src/components/sections.ts`](src/components/sections.ts),
+so their labels cannot drift apart: the header nav, the mobile menu, and the
+right-hand section rail. That file also exports `useActiveSection`, the single
+scroll-spy both the header and the rail use to highlight where the reader is.
+
+The rail is a column of markers down the right edge, shown from `lg` up —
+a phone has no room beside the content, and the sticky RSVP bar already covers
+the one link that matters there. Each marker is a real anchor, so it is
+tabbable and works without JavaScript; hovering or focusing one reveals the
+section name, which is also the link's accessible name.
+
 ## Motion and accessibility
 
 Every animation is written in the `--dur-*` / `--ease-*` tokens, so the
