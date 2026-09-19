@@ -42,7 +42,6 @@ export const DIET_OPTIONS = [
   "Halal",
   "Kosher",
   "No pork",
-  "No alcohol",
 ] as const;
 
 export const EMPTY_DIETARY: Dietary = { allergies: [], diets: [], other: "" };
