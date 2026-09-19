@@ -27,6 +27,7 @@ interface RsvpSubmission {
   extraAdults: ExtraAdultInput[];
   children: ChildInput[];
   hasDietaryNeeds: boolean | null;
+  dietary: { allergies: string[]; diets: string[]; other: string };
   travellingOutOfTown: boolean | null;
   logistics: { overnight: boolean; parking: boolean; transport: boolean };
   message: string;
@@ -34,6 +35,8 @@ interface RsvpSubmission {
 }
 
 const MAX_TEXT = 2000;
+/** Enough for every offered option plus a few, not enough to be a payload. */
+const MAX_DIETARY_ITEMS = 20;
 const MAX_EXTRA_ADULTS = 4;
 const MAX_CHILDREN = 5;
 
@@ -75,6 +78,15 @@ function parse(body: unknown): { data: RsvpSubmission } | { error: string } {
       })
     : [];
 
+  const dietaryRaw = (raw.dietary ?? {}) as Record<string, unknown>;
+  const asList = (value: unknown) =>
+    Array.isArray(value)
+      ? value
+          .slice(0, MAX_DIETARY_ITEMS)
+          .map((v) => asString(v, 60))
+          .filter(Boolean)
+      : [];
+
   const logisticsRaw = (raw.logistics ?? {}) as Record<string, unknown>;
 
   return {
@@ -86,6 +98,11 @@ function parse(body: unknown): { data: RsvpSubmission } | { error: string } {
       extraAdults,
       children,
       hasDietaryNeeds: asTriState(raw.hasDietaryNeeds),
+      dietary: {
+        allergies: asList(dietaryRaw.allergies),
+        diets: asList(dietaryRaw.diets),
+        other: asString(dietaryRaw.other, MAX_TEXT),
+      },
       travellingOutOfTown: asTriState(raw.travellingOutOfTown),
       logistics: {
         overnight: logisticsRaw.overnight === true,

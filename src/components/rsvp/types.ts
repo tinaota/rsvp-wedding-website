@@ -14,6 +14,39 @@ export interface Child {
   age: string;
 }
 
+/** What the kitchen needs to know, collected only when the guest says yes. */
+export interface Dietary {
+  allergies: string[];
+  diets: string[];
+  /** Filled in when "Other" is ticked. */
+  other: string;
+}
+
+/** Offered as tick boxes; anything outside these goes in `other`. */
+export const ALLERGY_OPTIONS = [
+  "Peanuts",
+  "Tree nuts",
+  "Shellfish",
+  "Fish",
+  "Eggs",
+  "Dairy",
+  "Gluten",
+  "Soy",
+  "Sesame",
+] as const;
+
+export const DIET_OPTIONS = [
+  "Vegetarian",
+  "Vegan",
+  "Pescatarian",
+  "Halal",
+  "Kosher",
+  "No pork",
+  "No alcohol",
+] as const;
+
+export const EMPTY_DIETARY: Dietary = { allergies: [], diets: [], other: "" };
+
 export interface Logistics {
   overnight: boolean;
   parking: boolean;
@@ -30,6 +63,8 @@ export interface RsvpData {
   /** Children attending. */
   children: Child[];
   hasDietaryNeeds: YesNo;
+  /** Only meaningful while `hasDietaryNeeds` is true. */
+  dietary: Dietary;
   travellingOutOfTown: YesNo;
   logistics: Logistics;
   /** Free-text note sent with an acceptance. */
@@ -46,6 +81,7 @@ export const EMPTY_RSVP: RsvpData = {
   extraAdults: [],
   children: [],
   hasDietaryNeeds: null,
+  dietary: { allergies: [], diets: [], other: "" },
   travellingOutOfTown: null,
   logistics: { overnight: false, parking: false, transport: false },
   message: "",
@@ -56,6 +92,16 @@ export const EMPTY_RSVP: RsvpData = {
 export const RSVP_DEADLINE = new Date("2026-10-12T23:59:59+11:00");
 
 export const RSVP_DEADLINE_LABEL = "12 October 2026";
+
+/** One readable line for the review screen and the submitted payload. */
+export function dietarySummary(data: RsvpData): string {
+  if (data.hasDietaryNeeds !== true) {
+    return data.hasDietaryNeeds === false ? "None" : "Not answered";
+  }
+  const parts = [...data.dietary.allergies, ...data.dietary.diets];
+  if (data.dietary.other.trim()) parts.push(data.dietary.other.trim());
+  return parts.length ? parts.join(", ") : "Yes — details to follow";
+}
 
 export function partySize(data: RsvpData): number {
   return 1 + data.extraAdults.length + data.children.length;

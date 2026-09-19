@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { RSVP_DEADLINE_LABEL, type RsvpData } from "./types";
+import { RSVP_DEADLINE_LABEL, dietarySummary, type RsvpData } from "./types";
 import { Button, ErrorText, headingStyle } from "./ui";
 
 interface Props {
@@ -176,13 +176,7 @@ export default function StepReview({
             />
             <Row
               label="Dietary needs"
-              value={
-                data.hasDietaryNeeds === true
-                  ? "Yes — event manager will call"
-                  : data.hasDietaryNeeds === false
-                    ? "None"
-                    : "Not answered"
-              }
+              value={dietarySummary(data)}
               step={3}
               onEdit={onGoTo}
             />

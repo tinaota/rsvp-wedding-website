@@ -1,11 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import type { Child, ExtraAdult, Logistics, RsvpData, YesNo } from "./types";
+import {
+  ALLERGY_OPTIONS,
+  DIET_OPTIONS,
+  EMPTY_DIETARY,
+  type Child,
+  type ExtraAdult,
+  type Logistics,
+  type RsvpData,
+  type YesNo,
+} from "./types";
 import {
   Button,
   StepNav,
   headingStyle,
+  hintStyle,
   inputStyle,
   labelStyle,
   useStepHeading,
@@ -208,6 +218,78 @@ function YesNoField({
   );
 }
 
+/**
+ * A tick-box group that edits a list of strings. Used for both allergies and
+ * dietary requirements, which behave identically.
+ */
+function CheckList({
+  legend,
+  name,
+  options,
+  selected,
+  onToggle,
+}: {
+  legend: string;
+  name: string;
+  options: readonly string[];
+  selected: string[];
+  onToggle: (next: string[]) => void;
+}) {
+  return (
+    <fieldset style={{ border: "none", padding: 0, margin: 0 }}>
+      <legend style={{ ...labelStyle, marginBottom: 10 }}>{legend}</legend>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+          gap: "2px 16px",
+        }}
+      >
+        {options.map((option) => {
+          const id = `${name}-${option.toLowerCase().replace(/\s+/g, "-")}`;
+          const checked = selected.includes(option);
+          return (
+            <label
+              key={option}
+              htmlFor={id}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                minHeight: 44,
+                cursor: "pointer",
+                fontSize: "var(--text-small)",
+                color: "var(--color-ink)",
+              }}
+            >
+              <input
+                type="checkbox"
+                id={id}
+                checked={checked}
+                onChange={(e) =>
+                  onToggle(
+                    e.target.checked
+                      ? [...selected, option]
+                      : selected.filter((v) => v !== option),
+                  )
+                }
+                style={{
+                  accentColor: "var(--color-burgundy)",
+                  width: 18,
+                  height: 18,
+                  cursor: "pointer",
+                  flexShrink: 0,
+                }}
+              />
+              {option}
+            </label>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
+}
+
 const LOGISTICS_OPTIONS: { key: keyof Logistics; id: string; label: string }[] =
   [
     {
@@ -250,6 +332,11 @@ export default function StepParty({
     while (children.length < count) children.push({ name: "", age: "" });
     onChange({ children: children.slice(0, count) });
   };
+
+  const dietaryCount =
+    data.dietary.allergies.length +
+    data.dietary.diets.length +
+    (data.dietary.other.trim() ? 1 : 0);
 
   const totalAdults = 1 + data.extraAdults.length;
   const totalChildren = data.children.length;
@@ -488,23 +575,102 @@ export default function StepParty({
           id="dietary"
           legend="Does anyone in your party have dietary needs or allergies?"
           value={data.hasDietaryNeeds}
-          onChange={(v) => onChange({ hasDietaryNeeds: v })}
+          onChange={(v) =>
+            // Saying no clears anything already ticked, so a changed mind
+            // never leaves stale requirements on the reply.
+            onChange({
+              hasDietaryNeeds: v,
+              dietary: v ? data.dietary : EMPTY_DIETARY,
+            })
+          }
         />
 
         {data.hasDietaryNeeds && (
-          <p
+          <div
+            className="disclosure-enter"
             style={{
-              fontSize: "var(--text-small)",
-              color: "var(--color-ink-muted)",
-              padding: "12px 16px",
+              padding: "20px 16px",
               backgroundColor: "var(--color-background)",
               borderRadius: "var(--radius-sm, 4px)",
               border: "1px solid var(--color-border-hairline)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 24,
             }}
           >
-            Thank you — our event manager will call you before the day to get
-            the details.
-          </p>
+            <p
+              style={{
+                fontSize: "var(--text-small)",
+                color: "var(--color-ink-muted)",
+              }}
+            >
+              Tick anything that applies to your party. The kitchen works from
+              this, so please include every guest you are replying for.
+            </p>
+
+            <CheckList
+              legend="Allergies"
+              name="allergy"
+              options={ALLERGY_OPTIONS}
+              selected={data.dietary.allergies}
+              onToggle={(next) =>
+                onChange({ dietary: { ...data.dietary, allergies: next } })
+              }
+            />
+
+            <CheckList
+              legend="Dietary requirements"
+              name="diet"
+              options={DIET_OPTIONS}
+              selected={data.dietary.diets}
+              onToggle={(next) =>
+                onChange({ dietary: { ...data.dietary, diets: next } })
+              }
+            />
+
+            <div>
+              <label htmlFor="dietary-other" style={labelStyle}>
+                Anything else
+              </label>
+              <span id="dietary-other-hint" style={hintStyle}>
+                Other allergies, intolerances or requirements — and who they are
+                for.
+              </span>
+              <textarea
+                id="dietary-other"
+                rows={3}
+                value={data.dietary.other}
+                onChange={(e) =>
+                  onChange({
+                    dietary: { ...data.dietary, other: e.target.value },
+                  })
+                }
+                aria-describedby="dietary-other-hint"
+                placeholder="e.g. Ruth is coeliac; Sam cannot have strawberries"
+                style={{
+                  ...inputStyle(),
+                  height: "auto",
+                  padding: "14px 16px",
+                  resize: "vertical",
+                }}
+                onFocus={focusBorder}
+                onBlur={blurBorder}
+              />
+            </div>
+
+            <p
+              aria-live="polite"
+              style={{
+                fontSize: "var(--text-eyebrow)",
+                color: "var(--color-ink-muted)",
+                fontStyle: "italic",
+              }}
+            >
+              {dietaryCount > 0
+                ? `${dietaryCount} noted. Our event manager may still call to confirm.`
+                : "Nothing ticked yet — our event manager will call you before the day."}
+            </p>
+          </div>
         )}
 
         <YesNoField
