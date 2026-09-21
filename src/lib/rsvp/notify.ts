@@ -203,6 +203,9 @@ export async function sendGuestConfirmation(
   const { data: sent, error } = await client().emails.send({
     from: sender(),
     to: data.email,
+    // The sending subdomain is not a mailbox anyone reads, so "reply to this
+    // email" would bounce without this. Replies go to the couple instead.
+    replyTo: CONTACT,
     subject: `Your RSVP for ${COUPLE}`,
     text: lines.join("\n"),
     html: toHtml(lines),
