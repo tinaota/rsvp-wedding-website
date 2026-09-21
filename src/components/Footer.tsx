@@ -39,7 +39,7 @@ export default function Footer() {
       >
         Need help with your RSVP?{" "}
         <a
-          href="mailto:rsvp@tshwanelovowrenewal.com"
+          href="mailto:yeukaiweddingvowrenewal@gmail.com"
           style={{
             color: "var(--color-burgundy)",
             textDecoration: "underline",

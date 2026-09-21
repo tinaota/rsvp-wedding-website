@@ -70,6 +70,13 @@ export interface RsvpData {
   message: string;
   /** Free-text note sent with a decline. */
   blessing: string;
+  /**
+   * Honeypot. Deliberately not called "website", "company" or anything else a
+   * browser or password manager recognises: a guest's autofill filled the old
+   * field and their reply was thrown away. A filled value now only flags the
+   * row, never discards it.
+   */
+  hp?: string;
 }
 
 export const EMPTY_RSVP: RsvpData = {
@@ -85,6 +92,7 @@ export const EMPTY_RSVP: RsvpData = {
   logistics: { overnight: false, parking: false, transport: false },
   message: "",
   blessing: "",
+  hp: "",
 };
 
 /** Replies close at the end of 12 October 2026, Melbourne time. */

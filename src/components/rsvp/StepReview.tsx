@@ -223,8 +223,8 @@ export default function StepReview({
           fontStyle: "italic",
         }}
       >
-        You can change your reply any time until {RSVP_DEADLINE_LABEL} using the
-        link in your confirmation email.
+        Need to change your reply before {RSVP_DEADLINE_LABEL}? Email
+        yeukaiweddingvowrenewal@gmail.com and we&rsquo;ll update it for you.
       </p>
 
       {error && (

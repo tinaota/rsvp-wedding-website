@@ -17,6 +17,14 @@ type Errors = Partial<Record<"fullName" | "mobile" | "email", string>>;
 const MOBILE_RE = /^[+()\d][\d\s()-]{6,}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
+const honeypotStyle: React.CSSProperties = {
+  position: "absolute",
+  left: "-9999px",
+  width: 1,
+  height: 1,
+  overflow: "hidden",
+};
+
 function validate(data: RsvpData): Errors {
   const errors: Errors = {};
   if (!data.fullName.trim()) errors.fullName = "Please tell us your name.";
@@ -25,7 +33,9 @@ function validate(data: RsvpData): Errors {
   } else if (!MOBILE_RE.test(data.mobile.trim())) {
     errors.mobile = "That doesn't look like a phone number.";
   }
-  if (data.email.trim() && !EMAIL_RE.test(data.email.trim())) {
+  if (!data.email.trim()) {
+    errors.email = "Please add an email address for your confirmation.";
+  } else if (!EMAIL_RE.test(data.email.trim())) {
     errors.email = "Please check this email address.";
   }
   return errors;
@@ -102,12 +112,34 @@ export default function StepDetails({
           label="Email address"
           type="email"
           inputMode="email"
+          required
           hint="For your confirmation and a reminder closer to the day."
           value={data.email}
           onChange={(v) => onChange({ email: v })}
           autoComplete="email"
           error={errors.email}
           inputRef={emailRef}
+        />
+      </div>
+
+      {/* Honeypot. Off-screen rather than display:none, which some bots skip.
+          No label and a meaningless name: Chrome ignores autocomplete="off",
+          so a field called "Website" gets autofilled for real guests. The
+          data-* attributes tell LastPass and 1Password to leave it alone.
+          A filled value only flags the reply server-side — it is never
+          discarded, because a guest's autofill must not cost them their RSVP. */}
+      <div aria-hidden="true" style={honeypotStyle}>
+        <input
+          id="rsvp-hp"
+          name="hp"
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+          data-lpignore="true"
+          data-1p-ignore=""
+          data-form-type="other"
+          value={data.hp ?? ""}
+          onChange={(e) => onChange({ hp: e.target.value })}
         />
       </div>
 

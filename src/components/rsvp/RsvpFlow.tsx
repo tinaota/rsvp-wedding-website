@@ -124,7 +124,7 @@ export default function RsvpFlow() {
             }}
           >
             Thank you to everyone who replied. If you still need to reach us,
-            please call us — details available in your confirmation email.
+            email yeukaiweddingvowrenewal@gmail.com.
           </p>
         </div>
       </section>
@@ -190,8 +190,8 @@ export default function RsvpFlow() {
               color: "var(--color-ink-muted)",
             }}
           >
-            You can change your reply any time until {RSVP_DEADLINE_LABEL} using
-            the link in your confirmation email.
+            Need to change your reply before {RSVP_DEADLINE_LABEL}? Email
+            yeukaiweddingvowrenewal@gmail.com and we&rsquo;ll update it for you.
           </p>
         </div>
 

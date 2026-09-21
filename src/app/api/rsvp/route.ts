@@ -1,44 +1,28 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
+import { sendCoupleNotification, sendGuestConfirmation } from "@/lib/rsvp/notify";
+import { markNotified, saveRsvp } from "@/lib/rsvp/store";
+import type { RsvpSubmission } from "@/lib/rsvp/types";
 
 /**
  * RSVP submission endpoint.
  *
- * The reply is validated and logged, then acknowledged. Nothing is persisted yet:
- * TODO — swap the `persist` call below for a database write or an email provider.
- * That function is the only place that needs to change.
+ * The reply is validated, written to Supabase, then emailed to the couple.
+ * The database is the system of record: a storage failure asks the guest to
+ * try again, an email failure does not, because the reply is already safe.
  */
 
-interface ExtraAdultInput {
-  name: string;
-  tbc: boolean;
-}
-
-interface ChildInput {
-  name: string;
-  age: string;
-}
-
-interface RsvpSubmission {
-  fullName: string;
-  mobile: string;
-  email: string;
-  attending: "accepts" | "declines";
-  extraAdults: ExtraAdultInput[];
-  children: ChildInput[];
-  hasDietaryNeeds: boolean | null;
-  dietary: { allergies: string[]; diets: string[]; other: string };
-  travellingOutOfTown: boolean | null;
-  logistics: { overnight: boolean; parking: boolean; transport: boolean };
-  message: string;
-  blessing: string;
-}
+// node:crypto and the Supabase client both want the Node runtime, not Edge.
+export const runtime = "nodejs";
 
 const MAX_TEXT = 2000;
 /** Enough for every offered option plus a few, not enough to be a payload. */
 const MAX_DIETARY_ITEMS = 20;
 const MAX_EXTRA_ADULTS = 4;
 const MAX_CHILDREN = 5;
+
+/** Mirrors the client check in StepDetails.tsx. */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 function asString(value: unknown, max = 200): string {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -58,6 +42,11 @@ function parse(body: unknown): { data: RsvpSubmission } | { error: string } {
 
   const mobile = asString(raw.mobile, 40);
   if (!mobile) return { error: "A mobile number is required." };
+
+  // Required since replies are confirmed and followed up by email.
+  const email = asString(raw.email);
+  if (!email) return { error: "An email address is required." };
+  if (!EMAIL_RE.test(email)) return { error: "That email address looks wrong." };
 
   const attending = raw.attending;
   if (attending !== "accepts" && attending !== "declines") {
@@ -93,7 +82,7 @@ function parse(body: unknown): { data: RsvpSubmission } | { error: string } {
     data: {
       fullName,
       mobile,
-      email: asString(raw.email),
+      email,
       attending,
       extraAdults,
       children,
@@ -115,18 +104,6 @@ function parse(body: unknown): { data: RsvpSubmission } | { error: string } {
   };
 }
 
-async function persist(id: string, data: RsvpSubmission): Promise<void> {
-  // TODO: replace with a real store (database insert, email, spreadsheet append…).
-  console.log(
-    `[rsvp] ${id} — ${data.fullName} ${data.attending} ` +
-      `(${1 + data.extraAdults.length} adults, ${data.children.length} ` +
-      `${data.children.length === 1 ? "child" : "children"})`,
-  );
-  console.log(
-    JSON.stringify({ id, receivedAt: new Date().toISOString(), ...data }),
-  );
-}
-
 export async function POST(request: Request) {
   let body: unknown;
   try {
@@ -138,6 +115,13 @@ export async function POST(request: Request) {
     );
   }
 
+  // Honeypot. This used to discard the reply outright, until a real guest's
+  // browser autofilled the hidden field and their RSVP vanished. Now it only
+  // suppresses the emails — the reply is still stored and flagged, because a
+  // junk row someone deletes beats a guest who thinks they replied and hasn't.
+  const filler = (body as Record<string, unknown> | null)?.hp;
+  const spamSuspected = typeof filler === "string" && filler.trim().length > 0;
+
   const result = parse(body);
   if ("error" in result) {
     return NextResponse.json(
@@ -146,8 +130,55 @@ export async function POST(request: Request) {
     );
   }
 
+  const data = result.data;
   const id = randomUUID();
-  await persist(id, result.data);
+
+  // Last-resort recovery path: if both the database and email fail, the reply
+  // is still recoverable from the platform logs for as long as they are kept.
+  console.log(
+    `[rsvp] ${id} — ${data.fullName} ${data.attending} ` +
+      `(${1 + data.extraAdults.length} adults, ${data.children.length} ` +
+      `${data.children.length === 1 ? "child" : "children"})`,
+  );
+  console.log(
+    JSON.stringify({ id, receivedAt: new Date().toISOString(), ...data }),
+  );
+
+  try {
+    await saveRsvp(id, data, {
+      userAgent: request.headers.get("user-agent"),
+      spamSuspected,
+    });
+  } catch (err) {
+    // Nothing remembers this reply, so the guest must be told to try again.
+    // RsvpFlow shows its retry message on any non-ok response.
+    console.error(`[rsvp] ${id} — could not store the reply:`, err);
+    return NextResponse.json(
+      { ok: false, error: "We couldn't save your reply." },
+      { status: 500 },
+    );
+  }
+
+  if (spamSuspected) {
+    // Stored and flagged. No email, so a bot cannot run up the Resend bill.
+    console.warn(`[rsvp] ${id} — honeypot filled; stored, flagged, not emailed`);
+    return NextResponse.json({ ok: true, id }, { status: 201 });
+  }
+
+  // Everything below is best effort: the reply is safe now.
+  try {
+    await sendCoupleNotification(id, data);
+    await markNotified(id);
+  } catch (err) {
+    // A null notified_at is the queryable list of replies nobody was told about.
+    console.error(`[rsvp] ${id} — could not notify the couple:`, err);
+  }
+
+  try {
+    await sendGuestConfirmation(data);
+  } catch (err) {
+    console.error(`[rsvp] ${id} — could not confirm to the guest:`, err);
+  }
 
   return NextResponse.json({ ok: true, id }, { status: 201 });
 }

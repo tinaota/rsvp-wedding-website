@@ -40,11 +40,34 @@ section is replaced with a closing notice.
 
 ## Where replies go
 
-`POST /api/rsvp` validates and clamps the payload, then logs it. **Nothing is
-persisted yet.** The single `persist()` function in
-[`src/app/api/rsvp/route.ts`](src/app/api/rsvp/route.ts) is the only thing that
-needs replacing to send replies to a database, an email provider or a
-spreadsheet.
+`POST /api/rsvp` validates and clamps the payload, writes it to Supabase, then
+emails the couple via Resend.
+
+**Supabase is the system of record.** One row per reply in `public.rsvps`,
+schema in [`supabase/migrations/0001_rsvps.sql`](supabase/migrations/0001_rsvps.sql).
+Row level security is on with no policies, so the table is unreadable except
+with the service-role key the API route uses. To see the guest list: Supabase
+dashboard → Table Editor → `rsvps`, where it can be sorted, filtered and
+exported to CSV for the venue. `adults_count` and `children_count` are
+generated columns, so they can never disagree with the names stored beside them.
+
+**Resend is the notification, not the record.** A failed email therefore never
+fails the request — the reply is already stored, and the row's `notified_at`
+stays null, which makes `select * from rsvps where notified_at is null` the
+list of replies nobody was told about. A failed *database* write does return
+500, so the guest is asked to try again rather than walking away believing they
+have replied.
+
+Guest confirmation emails are written but **gated off** behind `RESEND_FROM`.
+Resend's test sender only delivers to the address on the Resend account, so
+until a domain is verified they would silently fail for every guest. Set
+`RESEND_FROM` to a verified address and they start sending with no code change.
+
+Copy [`.env.example`](.env.example) to `.env.local` for local work; the same
+five variables go in the Vercel project settings for production.
+
+The endpoint carries a honeypot: a hidden `website` field that real guests
+never touch. Submissions that fill it get a plausible 201 and are discarded.
 
 ## The venue map
 
