@@ -153,7 +153,14 @@ export async function sendCoupleNotification(
     text: lines.join("\n"),
     html: toHtml(lines),
   });
-  if (error) throw new Error(`Resend rejected the notification: ${error.message}`);
+  if (error) {
+    // Name the addresses actually used. A misconfigured env var otherwise
+    // looks identical to a provider outage in the logs.
+    throw new Error(
+      `Resend rejected the notification (from="${sender()}" ` +
+        `to="${to.join(", ")}"): ${error.message}`,
+    );
+  }
   // The provider id, so an "it never arrived" report can be traced in Resend
   // rather than argued about.
   console.log(`[rsvp] ${id} — notification queued as ${sent?.id} to ${to.join(", ")}`);
