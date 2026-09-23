@@ -163,9 +163,15 @@ export async function sendGuestConfirmation(
   data: RsvpSubmission,
 ): Promise<void> {
   if (!isVerifiedSender()) {
+    // Two different causes, and conflating them cost an afternoon once: say
+    // which one it is.
+    const from = process.env.RESEND_FROM;
     console.log(
-      "[rsvp] guest confirmation skipped — RESEND_FROM is unset, so the test " +
-        "sender would only deliver to the Resend account address.",
+      from
+        ? `[rsvp] guest confirmation skipped — RESEND_FROM is "${from}", which ` +
+            "is a resend.dev test sender. It can only deliver to the Resend " +
+            "account address, so set it to an address on a verified domain."
+        : "[rsvp] guest confirmation skipped — RESEND_FROM is not set.",
     );
     return;
   }
