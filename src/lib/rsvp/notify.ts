@@ -192,6 +192,7 @@ export async function sendGuestConfirmation(
           "",
           `Party: ${partySize(data)} (${partyLabel(data)})`,
           `Dietary needs: ${dietarySummary(data)}`,
+          `Email: ${data.email}`,
           "",
           EVENT,
           `Directions: ${DIRECTIONS}`,
