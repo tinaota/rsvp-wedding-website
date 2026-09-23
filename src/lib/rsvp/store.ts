@@ -84,3 +84,16 @@ export async function markNotified(id: string): Promise<void> {
     console.error(`[rsvp] ${id} — could not set notified_at:`, err);
   }
 }
+
+/**
+ * A real read against the table, used by the keep-alive cron to count as
+ * database activity on the free plan. Returns the number of replies stored,
+ * which also makes the cron's log line a useful running total.
+ */
+export async function pingStore(): Promise<number> {
+  const { count, error } = await client()
+    .from("rsvps")
+    .select("id", { count: "exact", head: true });
+  if (error) throw new Error(`Supabase ping failed: ${error.message}`);
+  return count ?? 0;
+}
