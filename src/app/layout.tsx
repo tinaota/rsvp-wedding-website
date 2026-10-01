@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Playfair_Display, Lora, Great_Vibes } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const playfair = Playfair_Display({
@@ -55,7 +56,12 @@ export default function RootLayout({
       lang="en-AU"
       className={`${playfair.variable} ${lora.variable} ${greatVibes.variable}`}
     >
-      <body>{children}</body>
+      <body>
+        {children}
+        {/* Page views and the RSVP funnel events. Cookieless, and no names or
+            contact details are ever sent: see the track() calls in RsvpFlow. */}
+        <Analytics />
+      </body>
     </html>
   );
 }

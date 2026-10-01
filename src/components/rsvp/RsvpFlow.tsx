@@ -1,5 +1,6 @@
 "use client";
 
+import { track } from "@vercel/analytics";
 import { useCallback, useRef, useState } from "react";
 import Confirmation from "./Confirmation";
 import ProgressRail from "./ProgressRail";
@@ -8,7 +9,7 @@ import StepDetails from "./StepDetails";
 import StepParty from "./StepParty";
 import StepReply from "./StepReply";
 import StepReview from "./StepReview";
-import { RSVP_DEADLINE, RSVP_DEADLINE_LABEL } from "./types";
+import { RSVP_DEADLINE, RSVP_DEADLINE_LABEL, partySize } from "./types";
 import { useRsvpDraft } from "./useRsvpDraft";
 
 type DocumentWithViewTransition = Document & {
@@ -23,6 +24,12 @@ function withViewTransition(update: () => void) {
     update();
   }
 }
+
+const STEP_NAMES: Record<number, string> = {
+  2: "reply",
+  3: "party or blessing",
+  4: "review",
+};
 
 function isDeadlinePassed() {
   return new Date() > RSVP_DEADLINE;
@@ -52,11 +59,14 @@ export default function RsvpFlow() {
 
   const goToStep = useCallback(
     (next: number) => {
+      // Forward moves only, so the dashboard reads as a funnel: how many
+      // guests reached each step, and where the rest stopped.
+      if (next > step) track("RSVP step", { step: STEP_NAMES[next] ?? next });
       setNavigated(true);
       withViewTransition(() => setStep(next));
       scrollToSection(50);
     },
-    [scrollToSection],
+    [step, scrollToSection],
   );
 
   const handleSubmit = useCallback(async () => {
@@ -69,10 +79,20 @@ export default function RsvpFlow() {
         body: JSON.stringify(data),
       });
       if (!res.ok) throw new Error(`Request failed with ${res.status}`);
+      // Answer and party size only. Never the name, phone or email.
+      track("RSVP submitted", {
+        attending: data.attending ?? "unknown",
+        party: partySize(data),
+      });
       clearDraft();
       setSubmitted(true);
       scrollToSection(100);
-    } catch {
+    } catch (err) {
+      // A guest hitting the retry message is the thing most worth knowing
+      // about quickly, because it means a reply that has not been stored.
+      track("RSVP failed", {
+        reason: err instanceof Error ? err.message.slice(0, 60) : "network",
+      });
       setSubmitError(
         "We couldn't send your reply just then. Please check your connection and try again.",
       );
