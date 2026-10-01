@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import {
   RSVP_DEADLINE_LABEL,
+  addressLines,
   dietarySummary,
   partySize,
 } from "@/components/rsvp/types";
@@ -87,6 +88,7 @@ function coupleLines(id: string, data: RsvpSubmission): string[] {
     "",
     `Mobile: ${data.mobile}`,
     `Email: ${data.email}`,
+    `Postal address: ${addressLines(data).join(", ")}`,
   ];
 
   if (data.attending === "accepts") {
@@ -193,6 +195,7 @@ export async function sendGuestConfirmation(
           `Party: ${partySize(data)} (${partyLabel(data)})`,
           `Dietary needs: ${dietarySummary(data)}`,
           `Email: ${data.email}`,
+          `Postal address: ${addressLines(data).join(", ")}`,
           "",
           EVENT,
           `Directions: ${DIRECTIONS}`,
@@ -207,6 +210,9 @@ export async function sendGuestConfirmation(
           "",
           "Thank you for letting us know. You will be missed on the day, and " +
             "we are grateful you took the time to reply.",
+          "",
+          // Decliners get a card too, so they see the address we'll use.
+          `Postal address: ${addressLines(data).join(", ")}`,
           "",
           `If anything changes before ${RSVP_DEADLINE_LABEL}, write to ` +
             `${CONTACT} and we'll update your reply.`,

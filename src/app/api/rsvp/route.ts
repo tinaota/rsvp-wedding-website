@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { sendCoupleNotification, sendGuestConfirmation } from "@/lib/rsvp/notify";
 import { markNotified, saveRsvp } from "@/lib/rsvp/store";
 import type { RsvpSubmission } from "@/lib/rsvp/types";
+import { AU_STATES, EMPTY_ADDRESS } from "@/components/rsvp/types";
 
 /**
  * RSVP submission endpoint.
@@ -78,6 +79,37 @@ function parse(body: unknown): { data: RsvpSubmission } | { error: string } {
 
   const logisticsRaw = (raw.logistics ?? {}) as Record<string, unknown>;
 
+  // Postal address, for a thank-you card. Asked of everyone, and only the
+  // branch the guest chose is kept: switching back and forth on the form can
+  // leave stale values in the other one.
+  const residence = raw.residence;
+  if (residence !== "australia" && residence !== "overseas") {
+    return { error: "Please say whether you live in Australia or overseas." };
+  }
+  let address = { ...EMPTY_ADDRESS };
+  let country = "";
+  if (residence === "australia") {
+    const a = (raw.address ?? {}) as Record<string, unknown>;
+    address = {
+      line1: asString(a.line1),
+      line2: asString(a.line2),
+      suburb: asString(a.suburb, 80),
+      state: asString(a.state, 3).toUpperCase(),
+      postcode: asString(a.postcode, 4),
+    };
+    if (!address.line1) return { error: "A street address is required." };
+    if (!address.suburb) return { error: "A suburb is required." };
+    if (!AU_STATES.some((s) => s.code === address.state)) {
+      return { error: "Please choose an Australian state or territory." };
+    }
+    if (!/^\d{4}$/.test(address.postcode)) {
+      return { error: "Postcodes are 4 digits." };
+    }
+  } else {
+    country = asString(raw.country, 80);
+    if (!country) return { error: "A country is required." };
+  }
+
   return {
     data: {
       fullName,
@@ -100,6 +132,9 @@ function parse(body: unknown): { data: RsvpSubmission } | { error: string } {
       },
       message: asString(raw.message, MAX_TEXT),
       blessing: asString(raw.blessing, MAX_TEXT),
+      residence,
+      address,
+      country,
     },
   };
 }

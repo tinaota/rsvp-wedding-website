@@ -13,6 +13,7 @@ import {
 } from "./types";
 import {
   Button,
+  ChoiceField,
   StepNav,
   headingStyle,
   hintStyle,
@@ -143,6 +144,11 @@ function Stepper({
   );
 }
 
+const YES_NO = [
+  { value: true, label: "Yes" },
+  { value: false, label: "No" },
+] as const;
+
 function YesNoField({
   id,
   legend,
@@ -155,66 +161,13 @@ function YesNoField({
   onChange: (value: boolean) => void;
 }) {
   return (
-    <fieldset style={{ border: "none", padding: 0, margin: 0 }}>
-      <legend style={{ ...labelStyle, marginBottom: 12 }}>{legend}</legend>
-      <div style={{ display: "flex", gap: 12 }}>
-        {[true, false].map((opt) => {
-          const selected = value === opt;
-          const label = opt ? "Yes" : "No";
-          const radioId = `${id}-${label.toLowerCase()}`;
-          return (
-            <label
-              key={label}
-              htmlFor={radioId}
-              className={selected ? "on-burgundy" : undefined}
-              style={{
-                flex: 1,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 10,
-                height: 52,
-                border: `1.5px solid ${
-                  selected
-                    ? "var(--color-burgundy)"
-                    : "var(--color-border-strong)"
-                }`,
-                backgroundColor: selected
-                  ? "var(--color-burgundy)"
-                  : "transparent",
-                color: selected
-                  ? "var(--color-burgundy-ink)"
-                  : "var(--color-ink)",
-                cursor: "pointer",
-                borderRadius: "var(--radius-sm, 4px)",
-                fontFamily: "var(--font-body)",
-                fontSize: "var(--text-small)",
-                transition:
-                  "background-color var(--dur-fast) var(--ease-standard), border-color var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard)",
-              }}
-            >
-              <input
-                type="radio"
-                id={radioId}
-                name={id}
-                value={label}
-                checked={selected}
-                onChange={() => onChange(opt)}
-                style={{
-                  width: 16,
-                  height: 16,
-                  accentColor: selected
-                    ? "var(--color-burgundy-ink)"
-                    : "var(--color-burgundy)",
-                  cursor: "pointer",
-                }}
-              />
-              {label}
-            </label>
-          );
-        })}
-      </div>
-    </fieldset>
+    <ChoiceField<boolean>
+      id={id}
+      legend={legend}
+      value={value}
+      options={YES_NO}
+      onChange={onChange}
+    />
   );
 }
 

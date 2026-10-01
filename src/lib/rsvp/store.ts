@@ -62,6 +62,13 @@ export async function saveRsvp(
       transport: data.logistics.transport,
       message: data.message,
       blessing: data.blessing,
+      residence: data.residence,
+      address_line1: data.address.line1,
+      address_line2: data.address.line2,
+      suburb: data.address.suburb,
+      state: data.address.state,
+      postcode: data.address.postcode,
+      country: data.country,
       user_agent: meta.userAgent ?? null,
       spam_suspected: meta.spamSuspected ?? false,
     });

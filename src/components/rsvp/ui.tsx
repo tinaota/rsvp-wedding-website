@@ -102,11 +102,16 @@ interface FieldProps {
   error?: string;
   type?: "text" | "tel" | "email";
   required?: boolean;
+  /** Shows "(Optional)" beside the label, for fields in a required group. */
+  optional?: boolean;
   value: string;
   onChange: (value: string) => void;
   autoComplete?: string;
-  inputMode?: "text" | "tel" | "email";
+  inputMode?: "text" | "tel" | "email" | "numeric";
+  maxLength?: number;
   inputRef?: React.Ref<HTMLInputElement>;
+  /** A non-blocking note under the field, e.g. a postcode sanity check. */
+  notice?: string;
 }
 
 export function Field({
@@ -116,14 +121,21 @@ export function Field({
   error,
   type = "text",
   required,
+  optional,
   value,
   onChange,
   autoComplete,
   inputMode,
+  maxLength,
   inputRef,
+  notice,
 }: FieldProps) {
   const describedBy =
-    [hint ? `${id}-hint` : null, error ? `${id}-error` : null]
+    [
+      hint ? `${id}-hint` : null,
+      error ? `${id}-error` : null,
+      notice && !error ? `${id}-notice` : null,
+    ]
       .filter(Boolean)
       .join(" ") || undefined;
 
@@ -132,6 +144,7 @@ export function Field({
       <label htmlFor={id} style={labelStyle}>
         {label}{" "}
         {required && <span style={{ fontWeight: 400 }}>(Required)</span>}
+        {optional && <span style={{ fontWeight: 400 }}>(Optional)</span>}
       </label>
       {hint && (
         <span id={`${id}-hint`} style={hintStyle}>
@@ -143,6 +156,7 @@ export function Field({
         ref={inputRef}
         type={type}
         inputMode={inputMode}
+        maxLength={maxLength}
         required={required}
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -161,7 +175,207 @@ export function Field({
         }}
       />
       {error && <ErrorText id={`${id}-error`}>{error}</ErrorText>}
+      {notice && !error && (
+        <NoticeText id={`${id}-notice`}>{notice}</NoticeText>
+      )}
     </div>
+  );
+}
+
+/** A soft, non-blocking note. Deliberately not styled as an error. */
+export function NoticeText({
+  id,
+  children,
+}: {
+  id: string;
+  children: ReactNode;
+}) {
+  return (
+    <p
+      id={id}
+      aria-live="polite"
+      style={{
+        fontSize: "var(--text-eyebrow)",
+        color: "var(--color-ink-muted)",
+        fontStyle: "italic",
+        marginTop: 6,
+      }}
+    >
+      {children}
+    </p>
+  );
+}
+
+interface SelectFieldProps {
+  id: string;
+  label: string;
+  error?: string;
+  required?: boolean;
+  value: string;
+  onChange: (value: string) => void;
+  /** Shown as the disabled first option until something is chosen. */
+  placeholder: string;
+  options: readonly { value: string; label: string }[];
+  autoComplete?: string;
+  selectRef?: React.Ref<HTMLSelectElement>;
+}
+
+/** A native select dressed to match Field, with the same error wiring. */
+export function SelectField({
+  id,
+  label,
+  error,
+  required,
+  value,
+  onChange,
+  placeholder,
+  options,
+  autoComplete,
+  selectRef,
+}: SelectFieldProps) {
+  return (
+    <div>
+      <label htmlFor={id} style={labelStyle}>
+        {label}{" "}
+        {required && <span style={{ fontWeight: 400 }}>(Required)</span>}
+      </label>
+      <select
+        id={id}
+        ref={selectRef}
+        required={required}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        autoComplete={autoComplete}
+        aria-describedby={error ? `${id}-error` : undefined}
+        aria-invalid={error ? true : undefined}
+        style={{
+          ...inputStyle(Boolean(error)),
+          // Room for the native arrow so a long option never sits under it.
+          paddingRight: 32,
+          color: value ? "var(--color-ink)" : "var(--color-ink-muted)",
+        }}
+      >
+        <option value="" disabled>
+          {placeholder}
+        </option>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      {error && <ErrorText id={`${id}-error`}>{error}</ErrorText>}
+    </div>
+  );
+}
+
+interface ChoiceFieldProps<T extends string | boolean> {
+  id: string;
+  legend: string;
+  hint?: string;
+  error?: string;
+  value: T | null;
+  options: readonly { value: T; label: string }[];
+  onChange: (value: T) => void;
+  /** Lets a parent move focus here when validation fails. */
+  firstInputRef?: React.Ref<HTMLInputElement>;
+}
+
+/**
+ * Large side-by-side radio buttons. Every either/or question in the flow uses
+ * this, so they all look and behave the same.
+ */
+export function ChoiceField<T extends string | boolean>({
+  id,
+  legend,
+  hint,
+  error,
+  value,
+  options,
+  onChange,
+  firstInputRef,
+}: ChoiceFieldProps<T>) {
+  const describedBy =
+    [hint ? `${id}-hint` : null, error ? `${id}-error` : null]
+      .filter(Boolean)
+      .join(" ") || undefined;
+  return (
+    <fieldset
+      style={{ border: "none", padding: 0, margin: 0 }}
+      aria-describedby={describedBy}
+    >
+      <legend style={{ ...labelStyle, marginBottom: hint ? 6 : 12 }}>
+        {legend}
+      </legend>
+      {hint && (
+        <span id={`${id}-hint`} style={{ ...hintStyle, marginBottom: 12 }}>
+          {hint}
+        </span>
+      )}
+      <div style={{ display: "flex", gap: 12 }}>
+        {options.map((opt, i) => {
+          const selected = value === opt.value;
+          const radioId = `${id}-${opt.label.toLowerCase().replace(/\s+/g, "-")}`;
+          return (
+            <label
+              key={radioId}
+              htmlFor={radioId}
+              className={selected ? "on-burgundy" : undefined}
+              style={{
+                flex: 1,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 10,
+                minHeight: 52,
+                padding: "0 8px",
+                border: `1.5px solid ${
+                  error
+                    ? "var(--color-error)"
+                    : selected
+                      ? "var(--color-burgundy)"
+                      : "var(--color-border-strong)"
+                }`,
+                backgroundColor: selected
+                  ? "var(--color-burgundy)"
+                  : "transparent",
+                color: selected
+                  ? "var(--color-burgundy-ink)"
+                  : "var(--color-ink)",
+                cursor: "pointer",
+                borderRadius: "var(--radius-sm, 4px)",
+                fontFamily: "var(--font-body)",
+                fontSize: "var(--text-small)",
+                textAlign: "center",
+                transition:
+                  "background-color var(--dur-fast) var(--ease-standard), border-color var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard)",
+              }}
+            >
+              <input
+                type="radio"
+                id={radioId}
+                ref={i === 0 ? firstInputRef : undefined}
+                name={id}
+                value={opt.label}
+                checked={selected}
+                onChange={() => onChange(opt.value)}
+                style={{
+                  width: 16,
+                  height: 16,
+                  flexShrink: 0,
+                  accentColor: selected
+                    ? "var(--color-burgundy-ink)"
+                    : "var(--color-burgundy)",
+                  cursor: "pointer",
+                }}
+              />
+              {opt.label}
+            </label>
+          );
+        })}
+      </div>
+      {error && <ErrorText id={`${id}-error`}>{error}</ErrorText>}
+    </fieldset>
   );
 }
 

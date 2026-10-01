@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { RSVP_DEADLINE_LABEL, dietarySummary, type RsvpData } from "./types";
+import {
+  RSVP_DEADLINE_LABEL,
+  addressLines,
+  dietarySummary,
+  type RsvpData,
+} from "./types";
 import { Button, ErrorText, headingStyle } from "./ui";
 
 interface Props {
@@ -158,6 +163,14 @@ export default function StepReview({
         <Row label="Mobile" value={data.mobile} step={1} onEdit={onGoTo} />
         {data.email && (
           <Row label="Email" value={data.email} step={1} onEdit={onGoTo} />
+        )}
+        {addressLines(data).length > 0 && (
+          <Row
+            label="Postal address"
+            value={addressLines(data).join(", ")}
+            step={1}
+            onEdit={onGoTo}
+          />
         )}
         <Row
           label="Reply"
