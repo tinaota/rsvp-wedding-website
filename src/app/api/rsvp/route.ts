@@ -82,8 +82,20 @@ function parse(body: unknown): { data: RsvpSubmission } | { error: string } {
   // Postal address, for a thank-you card. Asked of everyone, and only the
   // branch the guest chose is kept: switching back and forth on the form can
   // leave stale values in the other one.
-  const residence = raw.residence;
-  if (residence !== "australia" && residence !== "overseas") {
+  //
+  // A payload with no `residence` key at all comes from a page loaded before
+  // the address question existed. Rejecting it would show "try again" to a
+  // guest whose open tab can never succeed, so it is stored with no address
+  // and lands in the mailing list as "Address needed", like any early reply.
+  // The current form always sends the key, so for it the question is still
+  // required.
+  const residence =
+    raw.residence === undefined ? null : (raw.residence as unknown);
+  if (
+    residence !== null &&
+    residence !== "australia" &&
+    residence !== "overseas"
+  ) {
     return { error: "Please say whether you live in Australia or overseas." };
   }
   let address = { ...EMPTY_ADDRESS };
@@ -105,7 +117,7 @@ function parse(body: unknown): { data: RsvpSubmission } | { error: string } {
     if (!/^\d{4}$/.test(address.postcode)) {
       return { error: "Postcodes are 4 digits." };
     }
-  } else {
+  } else if (residence === "overseas") {
     country = asString(raw.country, 80);
     if (!country) return { error: "A country is required." };
   }
