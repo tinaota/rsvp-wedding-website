@@ -45,7 +45,7 @@ function sender(): string {
   return process.env.RESEND_FROM || `${COUPLE} <onboarding@resend.dev>`;
 }
 
-function client(): Resend {
+export function resendClient(): Resend {
   const key = process.env.RESEND_API_KEY;
   if (!key) throw new Error("RESEND_API_KEY is not set.");
   return new Resend(key);
@@ -60,7 +60,7 @@ function escapeHtml(value: string): string {
 }
 
 /** Plain-text lines become a simple HTML body in the site's typography. */
-function toHtml(lines: string[]): string {
+export function toHtml(lines: string[]): string {
   const body = lines
     .map((line) =>
       line
@@ -147,7 +147,7 @@ export async function sendCoupleNotification(
   if (!to.length) throw new Error("RSVP_NOTIFY_TO is not set.");
 
   const lines = coupleLines(id, data);
-  const { data: sent, error } = await client().emails.send({
+  const { data: sent, error } = await resendClient().emails.send({
     from: sender(),
     to,
     replyTo: data.email,
@@ -220,7 +220,7 @@ export async function sendGuestConfirmation(
           `With love, ${COUPLE}`,
         ];
 
-  const { data: sent, error } = await client().emails.send({
+  const { data: sent, error } = await resendClient().emails.send({
     from: sender(),
     to: data.email,
     // The sending subdomain is not a mailbox anyone reads, so "reply to this

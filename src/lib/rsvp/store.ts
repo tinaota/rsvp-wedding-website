@@ -17,7 +17,7 @@ const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
  * Built lazily rather than at module load: a missing env var should fail the
  * one request that needed it, not the whole build.
  */
-function client() {
+export function supabaseAdmin() {
   if (!url || !serviceRoleKey) {
     throw new Error(
       "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must both be set.",
@@ -39,7 +39,7 @@ export async function saveRsvp(
   data: RsvpSubmission,
   meta: { userAgent?: string | null; spamSuspected?: boolean },
 ): Promise<void> {
-  const { error } = await client()
+  const { error } = await supabaseAdmin()
     .from("rsvps")
     .insert({
       id,
@@ -82,7 +82,7 @@ export async function saveRsvp(
  */
 export async function markNotified(id: string): Promise<void> {
   try {
-    const { error } = await client()
+    const { error } = await supabaseAdmin()
       .from("rsvps")
       .update({ notified_at: new Date().toISOString() })
       .eq("id", id);
@@ -98,7 +98,7 @@ export async function markNotified(id: string): Promise<void> {
  * which also makes the cron's log line a useful running total.
  */
 export async function pingStore(): Promise<number> {
-  const { count, error } = await client()
+  const { count, error } = await supabaseAdmin()
     .from("rsvps")
     .select("id", { count: "exact", head: true });
   if (error) throw new Error(`Supabase ping failed: ${error.message}`);
