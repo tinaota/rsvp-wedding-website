@@ -1,13 +1,23 @@
 import { NextResponse } from "next/server";
-import { buildSummary, isPastWedding, sendSummary } from "@/lib/rsvp/summary";
+import {
+  buildSummary,
+  describeChanges,
+  isPastWedding,
+  lastSentStable,
+  sendSummary,
+  stableSection,
+  withChanges,
+} from "@/lib/rsvp/summary";
 
 /**
- * Emails the family the RSVP numbers every morning at 8am Melbourne time.
+ * Checks the RSVPs every morning at 8am Melbourne time and emails the family
+ * only when the guest list has changed since the last email they received.
  *
  * Scheduled in vercel.json at 21:00 UTC, which is 8am AEDT. Daylight saving
- * runs from early October to April, so that holds for every day this sends.
+ * runs from early October to April, so that holds for every day this runs.
  *
- * `?preview=1` returns the email as text without sending it.
+ * `?preview=1` returns what would be sent, with the decision, without sending.
+ * `?force=1` sends even if nothing changed.
  */
 
 export const runtime = "nodejs";
@@ -26,7 +36,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
 
-  const preview = new URL(request.url).searchParams.get("preview") === "1";
+  const params = new URL(request.url).searchParams;
+  const preview = params.get("preview") === "1";
+  const force = params.get("force") === "1";
 
   if (isPastWedding() && !preview) {
     console.log("[daily-summary] after the wedding; nothing sent.");
@@ -34,12 +46,34 @@ export async function GET(request: Request) {
   }
 
   try {
-    const summary = await buildSummary();
-    if (preview) {
-      return new NextResponse(`${summary.subject}\n\n${summary.lines.join("\n")}`, {
-        headers: { "content-type": "text/plain; charset=utf-8" },
-      });
+    const base = await buildSummary();
+    const now = stableSection(base.lines.join("\n"));
+
+    // If the last email can't be read back, send anyway: a repeated email is
+    // a far smaller problem than a change nobody hears about.
+    let before: string | null = null;
+    try {
+      before = await lastSentStable();
+    } catch (err) {
+      console.error("[daily-summary] could not read the last summary:", err);
     }
+
+    const unchanged = before !== null && before === now;
+    const summary = before === null ? base : withChanges(base, describeChanges(before, now));
+    const decision = unchanged && !force ? "no change, would not send" : "would send";
+
+    if (preview) {
+      return new NextResponse(
+        `[${decision}]\n\n${summary.subject}\n\n${summary.lines.join("\n")}`,
+        { headers: { "content-type": "text/plain; charset=utf-8" } },
+      );
+    }
+
+    if (unchanged && !force) {
+      console.log("[daily-summary] no change since the last summary; nothing sent.");
+      return NextResponse.json({ ok: true, sent: false, reason: "no change" });
+    }
+
     const id = await sendSummary(summary);
     console.log(`[daily-summary] sent as ${id}: ${summary.subject}`);
     return NextResponse.json({ ok: true, sent: true, id });

@@ -179,13 +179,147 @@ export async function buildSummary(now: Date = new Date()): Promise<Summary> {
   } else if (toWedding === 0) {
     lines.push("The wedding is today. 💛");
   }
-  lines.push("", "— sent automatically every morning at 8am until the wedding");
+  lines.push(
+    "",
+    "— checked every morning at 8am; sent only when something has changed",
+  );
 
   const subject =
     `RSVP update — ${coming.length} households, ${total} guests` +
     (fresh.length ? ` (+${fresh.length} new)` : "");
 
   return { subject, lines };
+}
+
+/**
+ * The part of a summary that reflects the guest list itself, with everything
+ * that changes by the calendar alone removed: the date, the countdowns, the
+ * "since yesterday" block and the "(new)" markers. Two summaries with the same
+ * stable section describe the same list, so there is nothing to send.
+ *
+ * Works on the email's plain text, so it applies equally to a summary just
+ * built and to one fetched back from Resend.
+ */
+export function stableSection(text: string): string {
+  const lines = text.split("\n");
+  const start = lines.findIndex((l) => l.startsWith("COMING:"));
+  const end = lines.findIndex((l) => l.startsWith("RSVPs clos"));
+  if (start < 0) return "";
+  const out: string[] = [];
+  let inSinceBlock = false;
+  for (const raw of lines.slice(start, end < 0 ? undefined : end)) {
+    if (raw.startsWith("NEW SINCE YESTERDAY")) {
+      inSinceBlock = true;
+      continue;
+    }
+    if (inSinceBlock) {
+      if (raw.trim() === "") inSinceBlock = false;
+      continue;
+    }
+    if (raw.startsWith("No new RSVPs since yesterday")) continue;
+    out.push(raw.replace(/\s+\(new\)$/, "").trimEnd());
+  }
+  // Collapse blank runs left behind by the removed block.
+  return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+/** Section title, without a trailing count such as "(7)". */
+function sectionsOf(stable: string): Map<string, string[]> {
+  const map = new Map<string, string[]>();
+  let current = "";
+  for (const line of stable.split("\n")) {
+    if (!line.trim()) continue;
+    if (/^[A-Z][A-Z ]+(\(\d+\))?$/.test(line.trim())) {
+      current = line.replace(/\s*\(\d+\)$/, "").trim();
+      map.set(current, []);
+    } else if (current) {
+      // Numbering shifts whenever someone is added; compare without it.
+      map.get(current)!.push(line.replace(/^\d+\.\s+|^•\s+/, "").trim());
+    }
+  }
+  return map;
+}
+
+/** Plain-English list of what differs between two stable sections. */
+export function describeChanges(before: string, after: string): string[] {
+  const a = sectionsOf(before);
+  const b = sectionsOf(after);
+  const diff = (key: string) => {
+    const was = new Set(a.get(key) ?? []);
+    const now = new Set(b.get(key) ?? []);
+    return {
+      added: [...now].filter((x) => !was.has(x)),
+      removed: [...was].filter((x) => !now.has(x)),
+    };
+  };
+  const firstName = (line: string) => line.split(" + ")[0];
+  const changes: string[] = [];
+
+  const guests = diff("EVERYONE COMING");
+  for (const line of guests.added) {
+    const replaced = guests.removed.find((r) => firstName(r) === firstName(line));
+    changes.push(replaced ? `Updated: ${line}` : `New RSVP: ${line}`);
+  }
+  for (const line of guests.removed) {
+    if (!guests.added.some((x) => firstName(x) === firstName(line))) {
+      changes.push(`No longer coming: ${line}`);
+    }
+  }
+  for (const name of diff("NOT COMING").added) changes.push(`Can't make it: ${name}`);
+  for (const name of diff("STILL NEED A POSTAL ADDRESS").removed) {
+    changes.push(`Address received: ${name}`);
+  }
+  for (const line of diff("DIETARY NEEDS").added) changes.push(`Dietary: ${line}`);
+
+  // Anything else (a section that appeared or vanished wholesale) still
+  // counts, so a change can never be silently dropped.
+  if (!changes.length && before !== after) changes.push("The guest list was updated.");
+  return changes;
+}
+
+/**
+ * The stable section of the last summary that actually went out, read back
+ * from Resend. Null if it can't be found or read, in which case the caller
+ * sends anyway: a duplicate email is better than a missed change.
+ */
+export async function lastSentStable(): Promise<string | null> {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return null;
+  const headers = {
+    Authorization: `Bearer ${key}`,
+    "User-Agent": "rsvp-wedding-website/1.0",
+  };
+  const list = await fetch("https://api.resend.com/emails?limit=100", { headers });
+  if (!list.ok) return null;
+  const body = (await list.json()) as {
+    data?: { id: string; to?: string[]; subject?: string }[];
+  };
+  // Newest first, so the first match is the most recent summary.
+  const last = (body.data ?? []).find(
+    (e) => (e.to ?? []).includes(TO[0]) && (e.subject ?? "").startsWith("RSVP update"),
+  );
+  if (!last) return null;
+  const one = await fetch(`https://api.resend.com/emails/${last.id}`, { headers });
+  if (!one.ok) return null;
+  const email = (await one.json()) as { text?: string };
+  return email.text ? stableSection(email.text) : null;
+}
+
+/** Puts the "what changed" lines at the top, under the date. */
+export function withChanges(summary: Summary, changes: string[]): Summary {
+  if (!changes.length) return summary;
+  const [title, blank, ...rest] = summary.lines;
+  return {
+    subject: `${summary.subject} · ${changes.length} change${changes.length === 1 ? "" : "s"}`,
+    lines: [
+      title,
+      blank,
+      "WHAT'S CHANGED",
+      ...changes.map((c) => `• ${c}`),
+      "",
+      ...rest,
+    ],
+  };
 }
 
 export async function sendSummary(summary: Summary): Promise<string | undefined> {
